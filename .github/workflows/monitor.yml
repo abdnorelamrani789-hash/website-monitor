@@ -31,9 +31,11 @@ jobs:
         run: python monitor.py
 
       - name: Commit CSV updates
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "actions@github.com"
           git add data/uptime_report.csv
           git commit -m "Update uptime_report.csv from workflow run" || echo "No changes"
-          git push origin main
+          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }} HEAD:main
