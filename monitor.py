@@ -1,16 +1,6 @@
-# monitor.py
 import requests
-import pandas as pd
 import yagmail
 from datetime import datetime
-import os
-
-# --- إعداد مجلد البيانات ---
-DATA_DIR = "data"
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
-
-CSV_FILE = os.path.join(DATA_DIR, "uptime_report.csv")
 
 # --- لائحة المواقع المراد مراقبتها ---
 websites = [
@@ -18,12 +8,6 @@ websites = [
     "https://stackoverflow.com",
     "https://example.com"
 ]
-
-# --- قراءة التقرير السابق أو إنشاء DataFrame جديد ---
-if os.path.exists(CSV_FILE):
-    df = pd.read_csv(CSV_FILE)
-else:
-    df = pd.DataFrame(columns=["timestamp", "url", "status"])
 
 # --- إعداد الإيميل ---
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
@@ -59,14 +43,5 @@ Action Suggestions:
 This is an automated monitoring alert. Please do not reply to this email.
 """
         yag.send(to=EMAIL_TO, subject=subject, contents=body)
-    
-    # --- تحديث التقرير ---
-    df = pd.concat([df, pd.DataFrame([{
-        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "url": site,
-        "status": status
-    }])], ignore_index=True)
 
-# --- حفظ CSV ---
-df.to_csv(CSV_FILE, index=False)
-print("Monitoring done. CSV updated and emails sent if needed.")
+print("Monitoring done. Emails sent if needed.")
