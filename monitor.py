@@ -1,82 +1,72 @@
-import os
-import csv
-from datetime import datetime
+# monitor.py
 import requests
-import smtplib
-from email.mime.text import MIMEText
+import pandas as pd
+import yagmail
+from datetime import datetime
+import os
 
-# =========================
-# المتغيرات
-# =========================
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")  # Gmail ديالك
-EMAIL_PASS = os.getenv("EMAIL_PASS")        # App Password
-EMAIL_TO = os.getenv("EMAIL_TO")            # البريد المرسل ليه
+# --- إعداد مجلد البيانات ---
+DATA_DIR = "data"
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 
-URLS_TO_MONITOR = [
-    "https://example.com",
+CSV_FILE = os.path.join(DATA_DIR, "uptime_report.csv")
+
+# --- لائحة المواقع المراد مراقبتها ---
+websites = [
     "https://github.com",
-    "https://stackoverflow.com"
+    "https://stackoverflow.com",
+    "https://example.com"
 ]
 
-DATA_FOLDER = "data"
-CSV_FILE = os.path.join(DATA_FOLDER, "uptime_report.csv")
+# --- قراءة التقرير السابق أو إنشاء DataFrame جديد ---
+if os.path.exists(CSV_FILE):
+    df = pd.read_csv(CSV_FILE)
+else:
+    df = pd.DataFrame(columns=["timestamp", "url", "status"])
 
-if not os.path.exists(DATA_FOLDER):
-    os.makedirs(DATA_FOLDER)
+# --- إعداد الإيميل ---
+EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
+EMAIL_PASS = os.environ["EMAIL_PASS"]
+EMAIL_TO = os.environ["EMAIL_TO"]
+yag = yagmail.SMTP(EMAIL_ADDRESS, EMAIL_PASS)
 
-# =========================
-# دالة إرسال الإيميل
-# =========================
-def send_email(subject, message, url=None, status=None):
-    header = "Bonjour,\n\n"
-    body = f"{message}\n"
-    if url and status:
-        body += f"\nDétails:\nSite: {url}\nStatut: {status}\n"
-    footer = "\nCordialement,\nService de Monitoring de Sites Web"
-    full_message = header + body + footer
+# --- مراقبة المواقع ---
+for site in websites:
+    try:
+        r = requests.get(site, timeout=10)
+        if r.status_code == 200:
+            status = "Up ✅"
+        else:
+            status = f"Down ⚠️ (HTTP {r.status_code})"
+    except Exception as e:
+        status = f"Down ⚠️ ({e})"
+    
+    # --- إرسال إيميل احترافي إذا الموقع طاح ---
+    if "Down" in status:
+        subject = f"[ALERT] Site Down: {site}"
+        body = f"""
+🔹 Website: {site}
+🔹 Status: {status}
+🔹 Checked at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
-    msg = MIMEText(full_message)
-    msg['Subject'] = subject
-    msg['From'] = EMAIL_ADDRESS
-    msg['To'] = EMAIL_TO
+Action Suggestions:
+1. Verify your server is online and responding.
+2. Check DNS and hosting configuration.
+3. Inspect server logs for errors.
+4. Notify your technical team if downtime persists.
 
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-        server.login(EMAIL_ADDRESS, EMAIL_PASS)
-        server.send_message(msg)
+This is an automated monitoring alert. Please do not reply to this email.
+"""
+        yag.send(to=EMAIL_TO, subject=subject, contents=body)
+    
+    # --- تحديث التقرير ---
+    df = pd.concat([df, pd.DataFrame([{
+        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "url": site,
+        "status": status
+    }])], ignore_index=True)
 
-    print(f"Email sent: {subject}")
-
-# =========================
-# دالة تحديث CSV
-# =========================
-def update_csv(url, status):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    file_exists = os.path.isfile(CSV_FILE)
-    with open(CSV_FILE, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        if not file_exists:
-            writer.writerow(["timestamp", "url", "status"])
-        writer.writerow([now, url, status])
-
-# =========================
-# مراقبة المواقع
-# =========================
-def check_sites():
-    for url in URLS_TO_MONITOR:
-        try:
-            res = requests.get(url, timeout=15)
-            if res.status_code != 200:
-                send_email(f"⚠️ Site Down: {url}", "Un problème détecté.", url, f"DOWN ({res.status_code})")
-                update_csv(url, f"DOWN ({res.status_code})")
-            else:
-                print(f"{url} is up ✅")
-                update_csv(url, "UP")
-        except Exception as e:
-            send_email(f"⚠️ Site Down: {url}", "Le site ne répond pas.", url, "DOWN (Exception)")
-            update_csv(url, "DOWN (Exception)")
-
-# =========================
-# Main
-# =========================
-if __name__ == "__main__":
-    check_sites()
+# --- حفظ CSV ---
+df.to_csv(CSV_FILE, index=False)
+print("Monitoring done. CSV updated and emails sent if needed.")
