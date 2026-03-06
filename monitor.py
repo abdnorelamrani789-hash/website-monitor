@@ -1,34 +1,89 @@
 import requests
 import json
-from datetime import datetime
+import os
+import time
 
-with open("sites.json") as f:
-    sites = json.load(f)
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-results = []
+def send_telegram(message):
 
-for site in sites:
+    if not TELEGRAM_TOKEN:
+        return
 
-    try:
-        response = requests.get(site, timeout=10)
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
-        if response.status_code == 200:
-            status = "UP"
-        else:
-            status = f"ERROR {response.status_code}"
-
-    except:
-        status = "DOWN"
-
-    result = {
-        "site": site,
-        "status": status,
-        "time": str(datetime.now())
+    data = {
+        "chat_id": CHAT_ID,
+        "text": message
     }
 
-    print(result)
+    requests.post(url, data=data)
 
-    results.append(result)
 
-with open("history.json", "w") as f:
-    json.dump(results, f, indent=2)
+def load_sites():
+
+    with open("sites.json") as f:
+        return json.load(f)
+
+
+def load_uptime():
+
+    if not os.path.exists("uptime.json"):
+        return {}
+
+    with open("uptime.json") as f:
+        return json.load(f)
+
+
+def save_uptime(data):
+
+    with open("uptime.json", "w") as f:
+        json.dump(data, f)
+
+
+def check_site(url):
+
+    try:
+
+        r = requests.get(url, timeout=10)
+
+        if r.status_code == 200:
+            return True
+
+    except:
+        pass
+
+    return False
+
+
+def main():
+
+    sites = load_sites()
+
+    uptime = load_uptime()
+
+    for site in sites:
+
+        print("Checking", site)
+
+        ok = check_site(site)
+
+        if site not in uptime:
+            uptime[site] = {"up":0,"down":0}
+
+        if ok:
+            uptime[site]["up"] += 1
+            print("UP")
+
+        else:
+            uptime[site]["down"] += 1
+            print("DOWN")
+
+            send_telegram(f"⚠️ Website DOWN: {site}")
+
+    save_uptime(uptime)
+
+
+if __name__ == "__main__":
+    main()
