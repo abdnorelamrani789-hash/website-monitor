@@ -2,8 +2,8 @@ name: Website Monitor
 
 on:
   schedule:
-    - cron: "*/30 * * * *" # كل نصف ساعة
-  workflow_dispatch: {}     # تشغيل يدوي متى بغيت
+    - cron: "*/30 * * * *"  # كل نصف ساعة
+  workflow_dispatch: {}      # تشغيل يدوي متى بغيت
 
 jobs:
   monitor:
