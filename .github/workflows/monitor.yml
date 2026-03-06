@@ -2,40 +2,45 @@ name: Website Monitor
 
 on:
   schedule:
-    - cron: "*/30 * * * *"  # كل نصف ساعة
-  workflow_dispatch: {}      # تشغيل يدوي متى بغيت
+    # كل نصف ساعة
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # تشغيل يدوي
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repo
+      # نسخ الملفات من المستودع
+      - name: Checkout repository
         uses: actions/checkout@v3
 
+      # إعداد Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: '3.11'
 
+      # تثبيت المكتبات
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests
+          pip install requests pandas yagmail
 
-      - name: Run monitor script
+      # تشغيل سكريبت المراقبة
+      - name: Run monitor
         env:
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python monitor.py
 
-      - name: Commit CSV updates and push
+      # حفظ CSV على GitHub
+      - name: Commit and push report
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "actions@github.com"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/uptime_report.csv
-          git commit -m "Update uptime_report.csv from workflow run" || echo "No changes"
+          git commit -m "Update uptime_report.csv from workflow run" || echo "No changes to commit"
           git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }} HEAD:main
