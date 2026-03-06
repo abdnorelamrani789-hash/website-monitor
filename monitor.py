@@ -1,3 +1,5 @@
+# monitor.py - بدون CSV
+import os
 import requests
 import yagmail
 from datetime import datetime
