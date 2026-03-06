@@ -1,89 +1,56 @@
-import requests
-import json
 import os
+import requests
 import time
+import smtplib
+from email.mime.text import MIMEText
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+# =========================
+# المتغيرات من GitHub Secrets
+# =========================
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")  # bellinotion@gmail.com
+EMAIL_PASS = os.getenv("EMAIL_PASS")        # App Password 16 chars
+EMAIL_TO = os.getenv("EMAIL_TO")            # abdnorelamrani789@gmail.com
 
-def send_telegram(message):
+# المواقع لي بغينا نراقبو
+URLS_TO_MONITOR = [
+    "https://example.com",
+    "https://github.com",
+    "https://stackoverflow.com"
+]
 
-    if not TELEGRAM_TOKEN:
-        return
+# وقت الانتظار بين كل محاولة (بالثواني)
+CHECK_INTERVAL = 10  # هنا غير للتجربة، workflow غادي يشغل كل 30 دقيقة
 
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+# =========================
+# إرسال إيميل
+# =========================
+def send_email(subject, message):
+    msg = MIMEText(message)
+    msg['Subject'] = subject
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = EMAIL_TO
 
-    data = {
-        "chat_id": CHAT_ID,
-        "text": message
-    }
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        server.login(EMAIL_ADDRESS, EMAIL_PASS)
+        server.send_message(msg)
+    print(f"Email sent: {subject}")
 
-    requests.post(url, data=data)
+# =========================
+# فحص المواقع
+# =========================
+def check_sites():
+    for url in URLS_TO_MONITOR:
+        try:
+            res = requests.get(url, timeout=15)
+            if res.status_code != 200:
+                send_email(f"⚠️ Site Down: {url}", f"Le site {url} retourne le code {res.status_code}.")
+            else:
+                print(f"{url} is up ✅")
+        except Exception as e:
+            send_email(f"⚠️ Site Down: {url}", f"Le site {url} ne répond pas. Erreur: {e}")
 
-
-def load_sites():
-
-    with open("sites.json") as f:
-        return json.load(f)
-
-
-def load_uptime():
-
-    if not os.path.exists("uptime.json"):
-        return {}
-
-    with open("uptime.json") as f:
-        return json.load(f)
-
-
-def save_uptime(data):
-
-    with open("uptime.json", "w") as f:
-        json.dump(data, f)
-
-
-def check_site(url):
-
-    try:
-
-        r = requests.get(url, timeout=10)
-
-        if r.status_code == 200:
-            return True
-
-    except:
-        pass
-
-    return False
-
-
-def main():
-
-    sites = load_sites()
-
-    uptime = load_uptime()
-
-    for site in sites:
-
-        print("Checking", site)
-
-        ok = check_site(site)
-
-        if site not in uptime:
-            uptime[site] = {"up":0,"down":0}
-
-        if ok:
-            uptime[site]["up"] += 1
-            print("UP")
-
-        else:
-            uptime[site]["down"] += 1
-            print("DOWN")
-
-            send_telegram(f"⚠️ Website DOWN: {site}")
-
-    save_uptime(uptime)
-
-
+# =========================
+# تشغيل البوت
+# =========================
 if __name__ == "__main__":
-    main()
+    check_sites()
