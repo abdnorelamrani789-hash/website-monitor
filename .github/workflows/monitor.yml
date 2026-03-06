@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests pandas yagmail
+          pip install requests yagmail
 
       # تشغيل سكريبت المراقبة
       - name: Run monitor script
@@ -33,14 +33,3 @@ jobs:
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python monitor.py
-
-      # رفع CSV على GitHub باستخدام PAT
-      - name: Commit and push CSV
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "actions@github.com"
-          git add data/uptime_report.csv
-          git commit -m "Update uptime_report.csv from workflow run" || echo "No changes to commit"
-          git push https://${GH_PAT}@github.com/${{ github.repository }} HEAD:main
