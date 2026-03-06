@@ -18,10 +18,17 @@ URLS_TO_MONITOR = [
     "https://stackoverflow.com"
 ]
 
-CSV_FILE = "uptime_report.csv"
+# =========================
+# CSV دائم في مجلد data
+# =========================
+DATA_FOLDER = "data"
+if not os.path.exists(DATA_FOLDER):
+    os.makedirs(DATA_FOLDER)
+
+CSV_FILE = os.path.join(DATA_FOLDER, "uptime_report.csv")
 
 # =========================
-# إرسال إيميل بصياغة احترافية
+# إرسال إيميل احترافي
 # =========================
 def send_email(subject, message, url=None, status=None):
     header = f"Bonjour,\n\n"
@@ -120,4 +127,4 @@ def send_daily_report():
 # =========================
 if __name__ == "__main__":
     check_sites()
-    # التقرير اليومي يتم تشغيله من workflow
+    # التقرير اليومي يتم تشغيله من workflow الساعة 23
