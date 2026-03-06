@@ -30,7 +30,7 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python monitor.py
 
-      - name: Commit CSV updates
+      - name: Commit CSV updates and push
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
