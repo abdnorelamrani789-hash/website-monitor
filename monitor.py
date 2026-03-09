@@ -8,7 +8,6 @@ from datetime import datetime
 websites = [
     "https://github.com",
     "https://stackoverflow.com",
-    "https://example.com"
 ]
 
 # --- إعداد الإيميل ---
